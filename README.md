@@ -1,4 +1,4 @@
-# Dictionary Telegram Bot
+# Lexigram
 
 Telegram бот для изучения иностранных языков и пополнения словарного запаса.
 

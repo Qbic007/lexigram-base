@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # База данных
+  mongodb:
+    image: mongo:6
+    container_name: lexigram-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=example
+    networks:
+      - lexigram-network
+
+  # Redis для кэширования
+  redis:
+    image: redis:7
+    container_name: lexigram-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - lexigram-network
+
+  # Nginx для проксирования
+  nginx:
+    image: nginx:1.24
+    container_name: lexigram-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - web
+    networks:
+      - lexigram-network
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  lexigram-network:
+    driver: bridge 
