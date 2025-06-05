@@ -64,6 +64,23 @@ services:
     networks:
       - lexigram-network
 
+  # Bot Service
+  bot:
+    build:
+      context: ./bot
+      dockerfile: Dockerfile
+    container_name: lexigram-bot
+    environment:
+      - NODE_ENV=development
+      - BOT_TOKEN=${BOT_TOKEN}
+      - USER_SERVICE_URL=http://user-service:3000
+      - DICTIONARY_SERVICE_URL=http://dictionary-service:3001
+    depends_on:
+      - user-service
+      - dictionary-service
+    networks:
+      - lexigram-network
+
   # Nginx для проксирования
   nginx:
     image: nginx:1.24

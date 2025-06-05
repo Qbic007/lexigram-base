@@ -1,4 +1,4 @@
-import { Telegraf, session } from 'telegraf';
+import { Telegraf, session, Context } from 'telegraf';
 import path from 'path';
 import { UserService } from './services/user.service';
 import { DictionaryService } from './services/dictionary.service';
@@ -17,9 +17,21 @@ if (!process.env.BOT_TOKEN) {
   process.exit(1);
 }
 
-const bot = new Telegraf(process.env.BOT_TOKEN);
+// Определяем типы состояний
+interface SessionData {
+  state: 'idle' | 'waiting_for_language' | 'waiting_for_word';
+}
+
+interface BotContext extends Context {
+  session: SessionData;
+}
+
+const bot = new Telegraf<BotContext>(process.env.BOT_TOKEN);
 const userService = new UserService();
 const dictionaryService = new DictionaryService();
+
+// Инициализация сессии
+bot.use(session());
 
 // Добавляем обработчики для отладки
 bot.telegram.getMe().then((botInfo) => {
@@ -50,6 +62,11 @@ bot.use(async (ctx, next) => {
 
 // Команды
 bot.start(async (ctx) => {
+  if (!ctx.session) {
+    ctx.session = { state: 'idle' };
+  } else {
+    ctx.session.state = 'idle';
+  }
   const user = await userService.getUser(ctx.from!.id.toString());
   await ctx.reply(
     `Добро пожаловать в Lexigram, ${user.username}!\n` +
@@ -79,30 +96,8 @@ bot.command('add', async (ctx) => {
     await ctx.reply('Сначала выберите язык для изучения: /language');
     return;
   }
+  ctx.session.state = 'waiting_for_word';
   await ctx.reply('Введите слово и его перевод в формате:\nслово - перевод');
-});
-
-// Обработка добавления слова
-bot.on('text', async (ctx) => {
-  const text = ctx.message.text;
-  if (text.includes(' - ')) {
-    const [original, translation] = text.split(' - ').map(s => s.trim());
-    const user = await userService.getUser(ctx.from!.id.toString());
-    
-    try {
-      await dictionaryService.addWord({
-        userId: user.telegramId,
-        languageId: user.languages[0], // Используем первый язык из списка
-        original,
-        translation,
-        status: 'new',
-        addedAt: new Date()
-      });
-      await ctx.reply('Слово успешно добавлено!');
-    } catch (error) {
-      await ctx.reply('Произошла ошибка при добавлении слова. Попробуйте еще раз.');
-    }
-  }
 });
 
 // Просмотр слов
@@ -144,31 +139,69 @@ bot.command('settings', async (ctx) => {
 
 // Выбор языка
 bot.command('language', async (ctx) => {
+  if (!ctx.session) {
+    ctx.session = { state: 'waiting_for_language' };
+  } else {
+    ctx.session.state = 'waiting_for_language';
+  }
   await ctx.reply(
     'Выберите язык для изучения:\n\n' +
-    'en - Английский\n' +
-    'es - Испанский\n' +
-    'fr - Французский\n' +
-    'de - Немецкий\n\n' +
+    'en - Английский\n\n' +
     'Отправьте код языка (например, "en")'
   );
 });
 
-// Обработка выбора языка
+// Обработка текстовых сообщений
 bot.on('text', async (ctx) => {
   const text = ctx.message.text.toLowerCase();
-  const validLanguages = ['en', 'es', 'fr', 'de'];
   
-  if (validLanguages.includes(text)) {
+  // Обработка выбора языка
+  if (ctx.session.state === 'waiting_for_language') {
+    const validLanguages = ['en', 'es', 'fr', 'de'];
+    if (validLanguages.includes(text)) {
+      const user = await userService.getUser(ctx.from!.id.toString());
+      const languages = [...new Set([...user.languages, text])];
+      
+      try {
+        await userService.updateUserLanguages(user.telegramId, languages);
+        ctx.session.state = 'idle';
+        await ctx.reply(`Язык ${text} успешно добавлен в ваш список!`);
+      } catch (error) {
+        console.error('Ошибка при обновлении списка языков:', error);
+        await ctx.reply('Произошла ошибка при обновлении списка языков.');
+      }
+    } else {
+      await ctx.reply('Пожалуйста, выберите язык из списка (en, es, fr, de)');
+    }
+    return;
+  }
+  
+  // Обработка добавления слова
+  if (ctx.session.state === 'waiting_for_word' && text.includes(' - ')) {
+    const [original, translation] = text.split(' - ').map(s => s.trim());
     const user = await userService.getUser(ctx.from!.id.toString());
-    const languages = [...new Set([...user.languages, text])];
     
     try {
-      await userService.updateUserLanguages(user.telegramId, languages);
-      await ctx.reply(`Язык ${text} успешно добавлен в ваш список!`);
+      await dictionaryService.addWord({
+        userId: user.telegramId,
+        languageId: user.languages[0],
+        original,
+        translation,
+        status: 'new',
+        addedAt: new Date()
+      });
+      ctx.session.state = 'idle';
+      await ctx.reply('Слово успешно добавлено!');
     } catch (error) {
-      await ctx.reply('Произошла ошибка при обновлении списка языков.');
+      console.error('Ошибка при добавлении слова:', error);
+      await ctx.reply('Произошла ошибка при добавлении слова. Попробуйте еще раз.');
     }
+    return;
+  }
+  
+  // Если не в ожидании ввода, игнорируем сообщение
+  if (ctx.session.state === 'idle') {
+    await ctx.reply('Используйте команды для взаимодействия с ботом. /help - для списка команд.');
   }
 });
 
