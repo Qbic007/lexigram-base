@@ -41,10 +41,6 @@ Thumbs.db
 # Docker
 .docker/
 
-# Services
-services/*/
-!services/.gitkeep
-
 # Temporary files
 *.tmp
 *.temp
