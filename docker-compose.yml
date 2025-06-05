@@ -26,6 +26,44 @@ services:
     networks:
       - lexigram-network
 
+  # User Service
+  user-service:
+    build:
+      context: ./services/user
+      dockerfile: Dockerfile
+    container_name: lexigram-user-service
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://root:example@mongodb:27017/lexigram_test?authSource=admin
+      - REDIS_URL=redis://redis:6379
+      - PORT=3000
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - lexigram-network
+
+  # Dictionary Service
+  dictionary-service:
+    build:
+      context: ./services/dictionary
+      dockerfile: Dockerfile
+    container_name: lexigram-dictionary-service
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://root:example@mongodb:27017/lexigram_test?authSource=admin
+      - REDIS_URL=redis://redis:6379
+      - PORT=3001
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - lexigram-network
+
   # Nginx для проксирования
   nginx:
     image: nginx:1.24
@@ -36,6 +74,9 @@ services:
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d
       - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - user-service
+      - dictionary-service
     networks:
       - lexigram-network
 

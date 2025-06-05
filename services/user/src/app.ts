@@ -14,7 +14,11 @@ app.use(express.json());
 
 // Подключение к MongoDB (кроме тестовой среды)
 if (process.env.NODE_ENV !== 'test') {
-  const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/lexigram_users';
+  const mongoUri = process.env.MONGODB_URI;
+  if (!mongoUri) {
+    console.error('MONGODB_URI is not defined');
+    process.exit(1);
+  }
   mongoose.connect(mongoUri)
     .then(() => {
       console.log('MongoDB connected');
