@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:20
 
 WORKDIR /app
 
@@ -8,6 +8,6 @@ RUN npm install
 
 COPY . .
 
-RUN npm run build
+RUN apt-get update && apt-get install -y tzdata
 
-CMD ["npm", "start"] 
+CMD ["npx", "ts-node", "src/index.ts"] 

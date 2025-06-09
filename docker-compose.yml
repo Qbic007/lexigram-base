@@ -15,21 +15,10 @@ services:
     networks:
       - lexigram-network
 
-  # Redis для кэширования
-  redis:
-    image: redis:7
-    container_name: lexigram-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - lexigram-network
-
   # User Service
   user-service:
     build:
-      context: ./services/user-service
+      context: ./services/user
       dockerfile: Dockerfile
     container_name: lexigram-user-service
     ports:
@@ -43,36 +32,17 @@ services:
     networks:
       - lexigram-network
 
-  # Dictionary Service
-  dictionary-service:
-    build:
-      context: ./services/dictionary
-      dockerfile: Dockerfile
-    container_name: lexigram-dictionary-service
-    ports:
-      - "3001:3001"
-    environment:
-      - NODE_ENV=development
-      - MONGODB_URI=mongodb://root:example@mongodb:27017/lexigram_test?authSource=admin
-      - REDIS_URL=redis://redis:6379
-      - PORT=3001
-    depends_on:
-      - mongodb
-      - redis
-    networks:
-      - lexigram-network
-
   # Translation Service
   translation-service:
     build:
-      context: ./services/translation-service
+      context: ./services/translation
       dockerfile: Dockerfile
     container_name: lexigram-translation-service
     ports:
-      - "3001:3001"
+      - "3002:3002"
     environment:
       - NODE_ENV=development
-      - PORT=3001
+      - PORT=3002
     networks:
       - lexigram-network
 
@@ -86,33 +56,15 @@ services:
       - NODE_ENV=development
       - BOT_TOKEN=${BOT_TOKEN}
       - USER_SERVICE_URL=http://user-service:3000
-      - TRANSLATION_SERVICE_URL=http://translation-service:3001
+      - TRANSLATION_SERVICE_URL=http://translation-service:3002
     depends_on:
       - user-service
-      - dictionary-service
       - translation-service
-    networks:
-      - lexigram-network
-
-  # Nginx для проксирования
-  nginx:
-    image: nginx:1.24
-    container_name: lexigram-nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./nginx/ssl:/etc/nginx/ssl
-    depends_on:
-      - user-service
-      - dictionary-service
     networks:
       - lexigram-network
 
 volumes:
   mongodb_data:
-  redis_data:
 
 networks:
   lexigram-network:

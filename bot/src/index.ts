@@ -1,9 +1,10 @@
 import { Telegraf } from 'telegraf';
 import dotenv from 'dotenv';
-import axios from 'axios';
+import path from 'path';
+import { TranslationService } from './services/translation.service';
 
 // Загружаем переменные окружения
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 // Проверяем наличие токена
 if (!process.env.BOT_TOKEN) {
@@ -14,8 +15,12 @@ if (!process.env.BOT_TOKEN) {
 // Создаем экземпляр бота
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
+// Создаем экземпляр сервиса перевода
+const translationService = TranslationService.getInstance();
+
 // Обработчик команды /start
 bot.start(async (ctx) => {
+  console.log('Received /start command');
   await ctx.reply(
     'Привет! Я бот для изучения иностранных языков.\n\n' +
     'Просто отправь мне любое слово, и я переведу его для тебя.'
@@ -24,11 +29,12 @@ bot.start(async (ctx) => {
 
 // Обработчик текстовых сообщений
 bot.on('text', async (ctx) => {
+  console.log('Received text message:', ctx.message.text);
   const word = ctx.message.text;
   
   try {
-    // TODO: Здесь будет запрос к translation-service
-    await ctx.reply(`Получил слово: ${word}\n\nСкоро здесь будет перевод!`);
+    const translation = await translationService.translateWord(word);
+    await ctx.reply(`Перевод слова "${word}":\n\n${translation}`);
   } catch (error) {
     console.error('Error processing word:', error);
     await ctx.reply('Извините, произошла ошибка при обработке слова.');
