@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  # База данных
+  mongodb:
+    image: mongo:6
+    container_name: lexigram-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=example
+    networks:
+      - lexigram-network
+
+  # Redis для кэширования
+  redis:
+    image: redis:7
+    container_name: lexigram-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - lexigram-network
+
+  # User Service
+  user-service:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+    container_name: lexigram-user-service
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://root:example@mongodb:27017/lexigram?authSource=admin
+      - PORT=3000
+    depends_on:
+      - mongodb
+    networks:
+      - lexigram-network
+
+  # Dictionary Service
+  dictionary-service:
+    build:
+      context: ./services/dictionary
+      dockerfile: Dockerfile
+    container_name: lexigram-dictionary-service
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://root:example@mongodb:27017/lexigram_test?authSource=admin
+      - REDIS_URL=redis://redis:6379
+      - PORT=3001
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - lexigram-network
+
+  # Translation Service
+  translation-service:
+    build:
+      context: ./services/translation-service
+      dockerfile: Dockerfile
+    container_name: lexigram-translation-service
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+    networks:
+      - lexigram-network
+
+  # Bot
+  bot:
+    build:
+      context: ./bot
+      dockerfile: Dockerfile
+    container_name: lexigram-bot
+    environment:
+      - NODE_ENV=development
+      - BOT_TOKEN=${BOT_TOKEN}
+      - USER_SERVICE_URL=http://user-service:3000
+      - TRANSLATION_SERVICE_URL=http://translation-service:3001
+    depends_on:
+      - user-service
+      - dictionary-service
+      - translation-service
+    networks:
+      - lexigram-network
+
+  # Nginx для проксирования
+  nginx:
+    image: nginx:1.24
+    container_name: lexigram-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - user-service
+      - dictionary-service
+    networks:
+      - lexigram-network
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  lexigram-network:
+    driver: bridge 
