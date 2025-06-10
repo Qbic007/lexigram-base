@@ -24,6 +24,9 @@ const menuKeyboard = Markup.keyboard([
   ['📚 Меню']
 ]).resize();
 
+// Простая in-memory Map для хранения состояния редактирования
+const editState = new Map<number, string>(); // userId -> wordId
+
 // Обработчик команды /start
 bot.start(async (ctx: Context) => {
   await ctx.reply(
@@ -41,13 +44,34 @@ bot.hears('📚 Меню', async (ctx: Context) => {
   await ctx.reply('Выберите действие:', keyboard);
 });
 
-// Обработчик текстовых сообщений
-bot.on('text', async (ctx: Context) => {
+// Обработчик текстовых сообщений с учётом состояния редактирования
+bot.on('text', async (ctx: any) => {
   if (!ctx.message || typeof ctx.message !== 'object' || !('text' in ctx.message)) {
     return;
   }
   const text = ctx.message.text;
   
+  // Если пользователь в режиме редактирования
+  const wordId = editState.get(ctx.from?.id);
+  if (wordId) {
+    // Ожидаем формат "слово - перевод"
+    const parts = text.split('-').map((s: string) => s.trim());
+    if (parts.length !== 2) {
+      await ctx.reply('Пожалуйста, введите в формате: слово - перевод');
+      return;
+    }
+    const [word, translation] = parts;
+    try {
+      await dictionaryService.updateWord(ctx.from.id, wordId, word, translation);
+      await ctx.reply('Слово успешно обновлено!');
+      editState.delete(ctx.from.id);
+    } catch (error) {
+      console.error('Error updating word:', error);
+      await ctx.reply('Ошибка при обновлении слова');
+    }
+    return;
+  }
+
   if (text === '📚 Меню') {
     return; // Этот случай обрабатывается отдельным обработчиком
   }
@@ -107,8 +131,35 @@ bot.action('view_dictionary', async (ctx: Context) => {
 });
 
 // Обработчик редактирования слова
-bot.action(/^edit_(.+)$/, async (ctx: any) => { // ctx.match: [string, string]
-  await ctx.answerCbQuery('Функция редактирования будет реализована позже.');
+bot.action(/^edit_(.+)$/, async (ctx: any) => {
+  if (!ctx.from) {
+    await ctx.answerCbQuery('Ошибка: не удалось определить пользователя');
+    return;
+  }
+  const wordId = ctx.match[1];
+  
+  try {
+    // Получаем текущее слово из словаря
+    const dictionary = await dictionaryService.getUserDictionary(ctx.from.id);
+    const wordToEdit = dictionary.find(item => item._id === wordId);
+    
+    if (!wordToEdit) {
+      await ctx.answerCbQuery('Слово не найдено');
+      return;
+    }
+
+    editState.set(ctx.from.id, wordId);
+    await ctx.answerCbQuery();
+    
+    // Отправляем сообщение без плейсхолдера
+    await ctx.reply(
+      'Введите новое слово и перевод через дефис:',
+      Markup.forceReply()
+    );
+  } catch (error) {
+    console.error('Error getting word:', error);
+    await ctx.answerCbQuery('Ошибка при получении слова');
+  }
 });
 
 // Обработчик удаления слова
