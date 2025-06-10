@@ -40,7 +40,7 @@ app.get('/translators', (req, res) => {
   res.json({ translators });
 });
 
-const PORT = process.env.TRANSLATION_SERVICE_PORT || 3002;
+const PORT = process.env.TRANSLATION_SERVICE_PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Сервис перевода запущен на порту ${PORT}`);
   console.log('Доступные переводчики:', translationFacade.getAvailableTranslators());

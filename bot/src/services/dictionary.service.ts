@@ -1,68 +1,54 @@
 import axios from 'axios';
-import dotenv from 'dotenv';
-import path from 'path';
 
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
-
-if (!process.env.USER_SERVICE_URL) {
-  throw new Error('USER_SERVICE_URL is not set in .env file');
-}
+const DICTIONARY_SERVICE_URL = process.env.DICTIONARY_SERVICE_URL || 'http://dictionary-service:3002';
 
 export class DictionaryService {
-  private static instance: DictionaryService;
   private readonly baseUrl: string;
 
-  private constructor() {
-    this.baseUrl = process.env.USER_SERVICE_URL!;
+  public constructor() {
+    this.baseUrl = DICTIONARY_SERVICE_URL;
   }
 
-  public static getInstance(): DictionaryService {
-    if (!DictionaryService.instance) {
-      DictionaryService.instance = new DictionaryService();
-    }
-    return DictionaryService.instance;
-  }
-
-  public async addWordToDictionary(userId: number, word: string, translation: string): Promise<void> {
+  public async addWord(userId: number, word: string, translation: string): Promise<void> {
     try {
-      await axios.post(`${this.baseUrl}/users/${userId}/dictionary`, {
+      await axios.post(`${this.baseUrl}/api/dictionary/${userId}/words`, {
         word,
         translation
       });
     } catch (error) {
       console.error('Error adding word to dictionary:', error);
-      throw new Error('Failed to add word to dictionary');
+      throw error;
     }
   }
 
-  public async getUserDictionary(userId: number): Promise<{ word: string; translation: string; _id: string }[]> {
+  public async getUserDictionary(userId: number): Promise<any[]> {
     try {
-      const response = await axios.get(`${this.baseUrl}/users/${userId}/dictionary`);
-      return response.data.dictionary;
+      const response = await axios.get(`${this.baseUrl}/api/dictionary/${userId}/words`);
+      return response.data.words || [];
     } catch (error) {
       console.error('Error getting user dictionary:', error);
-      throw new Error('Failed to get user dictionary');
+      throw error;
     }
   }
 
   public async updateWord(userId: number, wordId: string, word: string, translation: string): Promise<void> {
     try {
-      await axios.put(`${this.baseUrl}/users/${userId}/dictionary/${wordId}`, {
+      await axios.put(`${this.baseUrl}/api/dictionary/${userId}/words/${wordId}`, {
         word,
         translation
       });
     } catch (error) {
       console.error('Error updating word:', error);
-      throw new Error('Failed to update word');
+      throw error;
     }
   }
 
   public async deleteWord(userId: number, wordId: string): Promise<void> {
     try {
-      await axios.delete(`${this.baseUrl}/users/${userId}/dictionary/${wordId}`);
+      await axios.delete(`${this.baseUrl}/api/dictionary/${userId}/words/${wordId}`);
     } catch (error) {
       console.error('Error deleting word:', error);
-      throw new Error('Failed to delete word');
+      throw error;
     }
   }
 } 

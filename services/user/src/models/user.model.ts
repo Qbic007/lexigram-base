@@ -1,26 +1,13 @@
 import mongoose, { Document } from 'mongoose';
 
-export interface IWord {
-  _id?: string;
-  word: string;
-  translation: string;
-  createdAt?: Date;
-}
-
 export interface IUser extends Document {
   telegramId: number;
-  dictionary: IWord[];
   createdAt: Date;
   updatedAt: Date;
 }
 
 const userSchema = new mongoose.Schema<IUser>({
   telegramId: { type: Number, required: true, unique: true },
-  dictionary: [{
-    word: { type: String, required: true },
-    translation: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now }
-  }],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

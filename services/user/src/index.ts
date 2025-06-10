@@ -19,7 +19,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://root:example@mongodb:2701
   .catch((err) => console.error('MongoDB connection error:', err));
 
 // Routes
-app.use('/users', userRoutes);
+app.use('/api/users', userRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
