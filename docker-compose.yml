@@ -14,6 +14,11 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD=example
     networks:
       - lexigram-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # User Service
   user-service:
@@ -28,7 +33,8 @@ services:
       - MONGODB_URI=mongodb://root:example@mongodb:27017/lexigram?authSource=admin
       - PORT=3000
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
     networks:
       - lexigram-network
 

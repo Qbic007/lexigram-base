@@ -2,6 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import userRoutes from './routes/user.routes';
 
 dotenv.config();
 
@@ -16,6 +17,9 @@ app.use(express.json());
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://root:example@mongodb:27017/lexigram?authSource=admin')
   .then(() => console.log('Connected to MongoDB'))
   .catch((err) => console.error('MongoDB connection error:', err));
+
+// Routes
+app.use('/users', userRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
