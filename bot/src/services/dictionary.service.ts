@@ -34,4 +34,14 @@ export class DictionaryService {
       throw new Error('Failed to add word to dictionary');
     }
   }
+
+  public async getUserDictionary(userId: number): Promise<{ word: string; translation: string }[]> {
+    try {
+      const response = await axios.get(`${this.baseUrl}/users/${userId}/dictionary`);
+      return response.data.dictionary;
+    } catch (error) {
+      console.error('Error getting user dictionary:', error);
+      throw new Error('Failed to get user dictionary');
+    }
+  }
 } 
