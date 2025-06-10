@@ -1,64 +1,14 @@
 import express from 'express';
-import cors from 'cors';
 import dotenv from 'dotenv';
-import path from 'path';
-import axios from 'axios';
+import { TranslationFacade } from './translators/translation.facade';
 
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config();
 
 const app = express();
-const port = process.env.TRANSLATION_SERVICE_PORT || 3002;
-
-app.use(cors());
 app.use(express.json());
 
-const GOOGLE_TRANSLATE_URL = 'https://translate.googleapis.com/translate_a/single';
-const MYMEMORY_API_URL = 'https://api.mymemory.translated.net/get';
+const translationFacade = new TranslationFacade();
 
-// Функция для перевода через Google Translate
-async function translateWithGoogle(word: string): Promise<string | null> {
-  try {
-    const response = await axios.get(GOOGLE_TRANSLATE_URL, {
-      params: {
-        client: 'gtx',
-        sl: 'en',
-        tl: 'ru',
-        dt: 't',
-        q: word
-      }
-    });
-    
-    if (response.data && response.data[0] && response.data[0][0] && response.data[0][0][0]) {
-      return response.data[0][0][0];
-    }
-    return null;
-  } catch (error) {
-    console.error('Ошибка при переводе через Google:', error);
-    return null;
-  }
-}
-
-// Функция для перевода через MyMemory
-async function translateWithMyMemory(word: string): Promise<string | null> {
-  try {
-    const response = await axios.get(MYMEMORY_API_URL, {
-      params: {
-        q: word,
-        langpair: 'en|ru'
-      }
-    });
-
-    if (response.data && response.data.responseData && response.data.responseData.translatedText) {
-      return response.data.responseData.translatedText;
-    }
-    return null;
-  } catch (error) {
-    console.error('Ошибка при переводе через MyMemory:', error);
-    return null;
-  }
-}
-
-// Эндпоинт для перевода
 app.post('/translate', async (req, res) => {
   const { word } = req.body;
   
@@ -69,14 +19,7 @@ app.post('/translate', async (req, res) => {
   console.log(`Перевод слова: ${word}`);
 
   try {
-    // Сначала пробуем Google Translate
-    let translation = await translateWithGoogle(word);
-    
-    // Если Google Translate не сработал, пробуем MyMemory
-    if (!translation) {
-      console.log('Google Translate не сработал, пробуем MyMemory');
-      translation = await translateWithMyMemory(word);
-    }
+    const translation = await translationFacade.translate(word);
 
     if (translation) {
       console.log(`Результат перевода: ${translation}`);
@@ -91,6 +34,14 @@ app.post('/translate', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Сервис перевода запущен на порту ${port}`);
+// Эндпоинт для получения списка доступных переводчиков
+app.get('/translators', (req, res) => {
+  const translators = translationFacade.getAvailableTranslators();
+  res.json({ translators });
+});
+
+const PORT = process.env.TRANSLATION_SERVICE_PORT || 3002;
+app.listen(PORT, () => {
+  console.log(`Сервис перевода запущен на порту ${PORT}`);
+  console.log('Доступные переводчики:', translationFacade.getAvailableTranslators());
 }); 
