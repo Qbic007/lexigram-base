@@ -4,10 +4,13 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm install
+RUN npm install --include=dev
+RUN npm install -g typescript
 
 COPY . .
 
 RUN apt-get update && apt-get install -y tzdata
 
-CMD ["npx", "ts-node", "src/index.ts"] 
+RUN npm run build
+
+CMD ["node", "dist/index.js"] 
