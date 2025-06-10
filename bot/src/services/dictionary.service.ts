@@ -35,13 +35,34 @@ export class DictionaryService {
     }
   }
 
-  public async getUserDictionary(userId: number): Promise<{ word: string; translation: string }[]> {
+  public async getUserDictionary(userId: number): Promise<{ word: string; translation: string; _id: string }[]> {
     try {
       const response = await axios.get(`${this.baseUrl}/users/${userId}/dictionary`);
       return response.data.dictionary;
     } catch (error) {
       console.error('Error getting user dictionary:', error);
       throw new Error('Failed to get user dictionary');
+    }
+  }
+
+  public async updateWord(userId: number, wordId: string, word: string, translation: string): Promise<void> {
+    try {
+      await axios.put(`${this.baseUrl}/users/${userId}/dictionary/${wordId}`, {
+        word,
+        translation
+      });
+    } catch (error) {
+      console.error('Error updating word:', error);
+      throw new Error('Failed to update word');
+    }
+  }
+
+  public async deleteWord(userId: number, wordId: string): Promise<void> {
+    try {
+      await axios.delete(`${this.baseUrl}/users/${userId}/dictionary/${wordId}`);
+    } catch (error) {
+      console.error('Error deleting word:', error);
+      throw new Error('Failed to delete word');
     }
   }
 } 

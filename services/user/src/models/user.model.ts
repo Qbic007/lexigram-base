@@ -1,12 +1,13 @@
-import mongoose from 'mongoose';
+import mongoose, { Document } from 'mongoose';
 
-interface IWord {
+export interface IWord {
+  _id?: string;
   word: string;
   translation: string;
-  createdAt: Date;
+  createdAt?: Date;
 }
 
-interface IUser {
+export interface IUser extends Document {
   telegramId: number;
   dictionary: IWord[];
   createdAt: Date;
