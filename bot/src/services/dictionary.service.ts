@@ -27,7 +27,7 @@ export class DictionaryService {
       return response.data.words || [];
     } catch (error) {
       console.error('Error getting user dictionary:', error);
-      throw error;
+      return [];
     }
   }
 

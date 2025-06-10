@@ -24,20 +24,24 @@ const userStates = new Map<number, any>();
 
 // Команды
 bot.command('start', async (ctx: Context) => {
+  if (!ctx.from) return;
+  
+  const userId = ctx.from.id;
+  const username = ctx.from.username || ctx.from.first_name;
+
   try {
-    if (!ctx.from) return;
-    await userService.createUser(ctx.from.id);
+    await userService.createUser(userId);
     await ctx.reply(
-      'Привет! Я бот для изучения английского языка. Я помогу тебе создать свой словарь и учить новые слова.\n\n' +
-      'Доступные команды:\n' +
-      '/add - Добавить новое слово\n' +
-      '/dictionary - Посмотреть свой словарь\n' +
-      '/translate - Перевести слово'
+      `Привет, ${username}! 👋\n\n` +
+      'Я помогу тебе изучать иностранные слова. Вот что я умею:\n\n' +
+      '• /add - Добавить новое слово\n' +
+      '• /dictionary - Посмотреть свой словарь\n\n' +
+      'Или просто отправьте слово, и я его переведу!'
     );
     userStates.set(ctx.from.id, {});
   } catch (error) {
-    console.error('Error in start command:', error);
-    await ctx.reply('Произошла ошибка при запуске бота. Пожалуйста, попробуйте позже.');
+    console.error('Error in /start command:', error);
+    await ctx.reply('Произошла ошибка при регистрации. Пожалуйста, попробуйте позже.');
   }
 });
 
@@ -59,7 +63,7 @@ bot.command('dictionary', async (ctx: Context) => {
     if (!ctx.from) return;
     const words = await dictionaryService.getUserDictionary(ctx.from.id);
     if (!words || words.length === 0) {
-      await ctx.reply('Ваш словарь пуст. Используйте команду /add чтобы добавить слова.');
+      await ctx.reply('Ваш словарь пока пуст. Для добавления слова используйте команду /add или просто отправьте мне слово на иностранном языке, и я его переведу.');
       return;
     }
     await ctx.reply('Ваш словарь:');
@@ -88,31 +92,31 @@ bot.command('translate', async (ctx: Context) => {
 });
 
 // Обработка текстовых сообщений
-bot.on(message('text'), async (ctx: Context) => {
+bot.on('text', async (ctx: Context) => {
+  if (!ctx.from || !ctx.message || typeof (ctx.message as any).text !== 'string') return;
+
+  const text = (ctx.message as any).text;
+  const userId = ctx.from.id;
+
+  // Игнорируем команды, начинающиеся с /
+  if (text.startsWith('/')) {
+    return;
+  }
+
+  // Игнорируем текст "📚 Меню"
+  if (text === '📚 Меню') {
+    await ctx.reply(
+      'Доступные команды:\n' +
+      '• /add - Добавить новое слово\n' +
+      '• /dictionary - Посмотреть свой словарь\n\n' +
+      'Или просто отправьте слово, и я его переведу!'
+    );
+    return;
+  }
+
   try {
-    if (!ctx.from) return;
-    if (!ctx.message) {
-      await ctx.reply('Пожалуйста, отправьте текстовое сообщение.');
-      return;
-    }
-    const text = (ctx.message as any).text;
-    if (typeof text !== 'string') {
-      await ctx.reply('Пожалуйста, отправьте текстовое сообщение.');
-      return;
-    }
     const stateObj = userStates.get(ctx.from.id) || {};
     if (!stateObj.state) {
-      // Проверяем, не является ли сообщение командой меню
-      if (text.startsWith('/') || text === '📚 Меню') {
-        await ctx.reply(
-          'Доступные команды:\n' +
-          '/add - Добавить новое слово\n' +
-          '/dictionary - Посмотреть свой словарь\n' +
-          '/translate - Перевести слово\n\n' +
-          'Или просто отправьте слово, и я его переведу!'
-        );
-        return;
-      }
       // Если нет состояния — считаем, что это запрос на перевод
       const translation = await translationService.translate(text);
       await ctx.reply(
